@@ -241,7 +241,7 @@ process medakaPolishAssembly {
     script:
     """
     STATUS="Failed to polish assembly with Medaka"
-    medaka_consensus -i $fastq -d $draft -m r1041_e82_400bps_sup_g632 -o . -t $task.cpus -f
+    medaka_consensus -i $fastq -d $draft -m r1041_e82_400bps_sup_g615 -o . -t $task.cpus -f
     echo ">${sample_id}" >> ${sample_id}.final.fasta
     sed "2q;d" consensus.fasta >> ${sample_id}.final.fasta
     STATUS="Completed successfully"
