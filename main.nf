@@ -253,7 +253,7 @@ process map2assembly {
     label "wfplasmid"
     cpus params.threads
     input:
-        tuple val(sample_id), path(polished), path(fastq)
+        tuple val(sample_id), path(polished), path(fastq), val(approx_size)
     output:
         tuple val(sample_id), path("*.bam"), path (".bai"), emit: alignments
     script:
@@ -470,7 +470,9 @@ workflow pipeline {
         polished = medakaPolishAssembly(assemblies.assembly)
 
         // Map initial reads to final assembly
-        mapping = map2assembly(polished)
+        //first make input channel with assembly and fastq
+        mapinput=polished.polished.combine(samples_filtered, by:0)
+        mapping = map2assembly(mapinput)
 
         // Concat statuses and keep the last of each
         final_status = sample_fastqs.status.concat(updated_status)
