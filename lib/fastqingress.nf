@@ -154,7 +154,6 @@ def get_sample_sheet(sample_sheet)
         .map { row -> tuple(
             row.barcode,
             row.sample_id,
-            row.approx_size,
             row.type ? row.type : 'test_sample')
         }
 }
