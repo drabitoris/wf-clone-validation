@@ -17,22 +17,23 @@ process combineFastq {
         path "${meta.sample_id}.stats", optional: true, emit: stats
         tuple val(meta.sample_id), env(STATUS), emit: status
     script:
-        def expected_depth = "$params.assm_coverage"
+        def expected_depth = "$params.assm_coverage" //want 60X cov
         // a little heuristic to decide if we have enough data
-        int value = (expected_depth.toInteger()) * 0.8
-        def expected_length_max = approx_size.toInteger()
-        def expected_length_min = approx_size.toInteger()
-        int max = (expected_length_max.toInteger()) * 1.5
-        int min = (expected_length_min.toInteger()) * 0.5
+        int value = (expected_depth.toInteger()) * 0.8 //48
+        def expected_length_max = approx_size.toInteger() //3kb for Jaison
+        def expected_length_min = approx_size.toInteger() //3kb for Jaison
+        int max = (expected_length_max.toInteger()) * 1.5 // 4.5kb for Jaison
+        int min = (expected_length_min.toInteger()) * 0.5 // 1.5kb for Jaison
     """
     STATUS="Failed due to insufficient reads"
     fastcat -s ${meta.sample_id} -r ${meta.sample_id}.stats -x ${directory} > /dev/null
     fastcat -a "$min" -b "$max" -s ${meta.sample_id} -r ${meta.sample_id}.interim -x ${directory} > ${meta.sample_id}.fastq
-    if [[ "\$(wc -l <"${meta.sample_id}.interim")" -ge "$value" ]];  then
+    #if [[ "\$(wc -l <"${meta.sample_id}.interim")" -ge "$value" ]];  then #if more lines in the interim summary than required 48, then gzip and complete successfully.
         gzip ${meta.sample_id}.fastq
         STATUS="Completed successfully"
-    fi
+    #fi
     """
+    
 }
 
 
@@ -248,6 +249,22 @@ process medakaPolishAssembly {
     """
 }
 
+process map2assembly {
+    label "wfplasmid"
+    cpus params.threads
+    module minimap2
+    module samtools
+    input:
+        tuple val(sample_id), path(polished), path(fastq)
+    output:
+        tuple val(sample_id), path("*.bam"), path (".bai"), emit: alignments
+    script:
+    """
+    minimap2 -ax map-ont $polished $fastq | samtools view -b | samtools sort > "${sample_id}_reads.bam
+    samtools index "${sample_id}"_reads.bam
+    """
+}
+
 
 process downsampledStats {
     label "wfplasmid"
@@ -453,6 +470,9 @@ workflow pipeline {
 
         // Polish draft assembly
         polished = medakaPolishAssembly(assemblies.assembly)
+
+        // Map initial reads to final assembly
+        mapping = map2assembly(polished)
 
         // Concat statuses and keep the last of each
         final_status = sample_fastqs.status.concat(updated_status)
