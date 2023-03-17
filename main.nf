@@ -440,6 +440,7 @@ workflow pipeline {
         else {
             final_samples = samples.map  { it -> return tuple(it[1],it[0], params.approx_size)}
         }
+        final_samples.view()
         sample_fastqs = combineFastq(final_samples)
         // Optionally filter the data, removing reads mapping to
         // the host or background genome
