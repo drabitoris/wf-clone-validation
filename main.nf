@@ -252,8 +252,6 @@ process medakaPolishAssembly {
 process map2assembly {
     label "wfplasmid"
     cpus params.threads
-    module minimap2
-    module samtools
     input:
         tuple val(sample_id), path(polished), path(fastq)
     output:
