@@ -11,17 +11,17 @@ process combineFastq {
     label "wfplasmid"
     cpus 1
     input:
-        tuple val(meta), path(directory), val(approx_size)
+        tuple val(meta), path(directory) //store approx_size in meta
     output:
-        tuple val(meta.sample_id), path("${meta.sample_id}.fastq.gz"), val(approx_size), optional: true, emit: sample
+        tuple val(meta.sample_id), path("${meta.sample_id}.fastq.gz"), val(meta.approx_size), optional: true, emit: sample
         path "${meta.sample_id}.stats", optional: true, emit: stats
         tuple val(meta.sample_id), env(STATUS), emit: status
     script:
         def expected_depth = "$params.assm_coverage" //want 60X cov
         // a little heuristic to decide if we have enough data
         int value = (expected_depth.toInteger()) * 0.8 //48
-        def expected_length_max = approx_size.toInteger() //3kb for Jaison
-        def expected_length_min = approx_size.toInteger() //3kb for Jaison
+        def expected_length_max = meta.approx_size.toInteger() //3kb for Jaison
+        def expected_length_min = meta.approx_size.toInteger() //3kb for Jaison
         int max = (expected_length_max.toInteger()) * 1.5 // 4.5kb for Jaison
         int min = (expected_length_min.toInteger()) * 0.5 // 1.5kb for Jaison
     """
@@ -431,15 +431,15 @@ workflow pipeline {
     main:
         // Combine fastq from each of the sample directories into
         // a single per-sample fastq file
-        named_samples = samples.map { it -> return tuple(it[1],it[0])} // metadata(sample_id,...), fastqdir
-        if(params.approx_size_sheet != null) {
-            approx_size = Channel.fromPath(params.approx_size_sheet) \
-            | splitCsv(header:true) \
-            | map { row-> tuple(row.sample_id, row.approx_size) }
-            final_samples = named_samples.join(approx_size)}
-        else {
-            final_samples = samples.map  { it -> return tuple(it[1],it[0], params.approx_size)}
-        }
+        final_samples = samples.map { it -> return tuple(it[1],it[0])} // metadata(sample_id,...), fastqdir
+        //if(params.approx_size_sheet != null) { //always use approx_size, from the sample_sheet
+        //    approx_size = Channel.fromPath(params.approx_size_sheet) \
+        //    | splitCsv(header:true) \
+        //    | map { row-> tuple(row.sample_id, row.approx_size) }
+        //    final_samples = named_samples.join(approx_size)}
+        //else {
+        //    final_samples = samples.map  { it -> return tuple(it[1],it[0], params.approx_size)}
+        //}
         final_samples.view() // check the approx sizes are right
         sample_fastqs = combineFastq(final_samples)
         // Optionally filter the data, removing reads mapping to

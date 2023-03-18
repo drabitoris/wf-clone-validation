@@ -136,7 +136,7 @@ def get_subdirectories(input_directory, unclassified)
  * to sample names.
  *
  * @param samples CSV file according to MinKNOW sample sheet specification
- * @return A Nextflow Channel of tuples (barcode, sample name, sample type)
+ * @return A Nextflow Channel of tuples (barcode, sample name, approx_size, sample type)
  */
 def get_sample_sheet(sample_sheet)
 {
@@ -154,6 +154,7 @@ def get_sample_sheet(sample_sheet)
         .map { row -> tuple(
             row.barcode,
             row.sample_id,
+            row.approx_size,
             row.type ? row.type : 'test_sample')
         }
 }
