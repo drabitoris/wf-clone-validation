@@ -515,8 +515,8 @@ workflow pipeline {
             annotation.json,
             annotation.annotations,
             workflow_params,
-            mapping.bam
-            mapping.bai
+            mapping.bam,
+            mapping.bai,
             mapping.fastq)
     emit:
         results
