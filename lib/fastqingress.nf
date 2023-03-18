@@ -341,7 +341,7 @@ def create_metamap(Map arguments) {
  * @param max_barcode Maximum (inclusive) barcode to accept.
  * @param unclassified Keep unclassified reads.
  *
- * @return Channel of tuples (path, map(sample_id, type, barcode))
+ * @return Channel of tuples (path, map(sample_id, type, barcode, approx_size))
  */
 def fastq_ingress(Map arguments)
 {
@@ -377,7 +377,7 @@ def fastq_ingress(Map arguments)
         if (!barcoded && !non_barcoded) {
             log.info "Single directory input detected."
             if (margs.sample_sheet) {
-                log.warn "`--sample_sheet` given but single non-barcode directory found. Ignoring."
+                log.warn "`--sample_sheet` given but single non-barcoded directory found. Ignoring."
             }
             return handle_flat_dir(input, margs.sample)
         }
