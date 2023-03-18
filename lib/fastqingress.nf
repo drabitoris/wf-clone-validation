@@ -277,7 +277,7 @@ def handle_barcoded_dirs(barcoded_dirs, sample_sheet, min_barcode, max_barcode)
         .filter { barcode_in_range(it, min_barcode, max_barcode) }
         .map { path -> tuple(path.baseName, path) }
         .join(sample_sheet)
-        .map { barcode, path, sample, type -> tuple(path, create_metamap([sample_id:sample, type:type, barcode:barcode, approx_size:approx_size])) }
+        .map { barcode, path, sample, approx_size, type -> tuple(path, create_metamap([sample_id:sample, type:type, barcode:barcode, approx_size:approx_size])) }
 }
 
 
