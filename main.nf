@@ -255,7 +255,9 @@ process map2assembly {
     input:
         tuple val(sample_id), path(polished), path(fastq), val(approx_size)
     output:
-        tuple val(sample_id), path("*.bam"), path ("*.bai"), emit: alignments
+        path("*.bam"), emit: bam
+        path("*.bai"), emit: bai
+        path(fastq), emit: fastq
     script:
     """
     minimap2 -ax map-ont $polished $fastq | samtools view -b | samtools sort > ${sample_id}_reads.bam
@@ -512,7 +514,10 @@ workflow pipeline {
             insert.inserts,
             annotation.json,
             annotation.annotations,
-            workflow_params)
+            workflow_params,
+            mapping.bam
+            mapping.bai
+            mapping.fastq)
     emit:
         results
         telemetry = workflow_params
