@@ -324,6 +324,7 @@ def create_metamap(Map arguments) {
         kwargs:[
             "type": "test_sample",
             "barcode": null,
+            "approx_size": null,
         ],
         name:"create_metamap",
     )
