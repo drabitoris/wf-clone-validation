@@ -266,7 +266,7 @@ def handle_barcoded_dirs(barcoded_dirs, sample_sheet, min_barcode, max_barcode)
         // We do this instead of .count() because valid_dirs is a list and
         // sample_sheet is a channel - the channel is only populated after
         // checkSampleSheet is complete and so if you compare without
-        // waiting for that then the comparisson fails
+        // waiting for that then the comparison fails
         sample_sheet_entries = sample_sheet.subscribe onNext: { count++ }, onComplete: { compareSampleSheetFastq(count,barcode_dirs_found) }
 
     }
