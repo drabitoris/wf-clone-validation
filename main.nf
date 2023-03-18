@@ -242,7 +242,7 @@ process medakaPolishAssembly {
         def model = medaka_model
     """
     STATUS="Failed to polish assembly with Medaka"
-    medaka_consensus -i "${fastq}" -d "${draft}" -m "${model}" -o . -t $task.cpus -f
+    medaka_consensus -i "${fastq}" -d "${draft}" -m "" -o . -t $task.cpus -f
     echo ">${sample_id}" >> "${sample_id}.final.fasta"
     sed "2q;d" consensus.fasta >> "${sample_id}.final.fasta"
     STATUS="Completed successfully"
