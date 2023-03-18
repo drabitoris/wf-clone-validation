@@ -258,8 +258,8 @@ process map2assembly {
         tuple val(sample_id), path("*.bam"), path (".bai"), emit: alignments
     script:
     """
-    minimap2 -ax map-ont $polished $fastq | samtools view -b | samtools sort > "${sample_id}_reads.bam
-    samtools index "${sample_id}"_reads.bam
+    minimap2 -ax map-ont $polished $fastq | samtools view -b | samtools sort > ${sample_id}_reads.bam
+    samtools index ${sample_id}_reads.bam
     """
 }
 
