@@ -440,7 +440,7 @@ workflow pipeline {
         //else {
         //    final_samples = samples.map  { it -> return tuple(it[1],it[0], params.approx_size)}
         //}
-        final_samples.view() // check the approx sizes are right
+        //final_samples.view() // check the approx sizes are right
         sample_fastqs = combineFastq(final_samples)
         // Optionally filter the data, removing reads mapping to
         // the host or background genome
@@ -549,7 +549,7 @@ workflow {
         "sample_sheet":params.sample_sheet,
         "min_barcode":params.min_barcode,
         "max_barcode":params.max_barcode])
-    samples.view() //[/vast/scratch/users/gouil.q/plasmids/marek/plasmid_validation/20230303/basecalls/barcode06, [type:test_sample, barcode:barcode06, sample_id:SEQ_NL63_His_Insect]]
+    //samples.view() //[/vast/scratch/users/gouil.q/plasmids/marek/plasmid_validation/20230303/basecalls/barcode06, [type:test_sample, barcode:barcode06, sample_id:SEQ_NL63_His_Insect]]
 
 
     host_reference = params.host_reference ?: 'NO_HOST_REF'
