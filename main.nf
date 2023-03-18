@@ -516,8 +516,7 @@ workflow pipeline {
             annotation.annotations,
             workflow_params,
             mapping.bam,
-            mapping.bai,
-            mapping.fastq)
+            mapping.bai)
     emit:
         results
         telemetry = workflow_params
