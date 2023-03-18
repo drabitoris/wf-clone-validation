@@ -255,7 +255,7 @@ process map2assembly {
     input:
         tuple val(sample_id), path(polished), path(fastq), val(approx_size)
     output:
-        tuple val(sample_id), path("*.bam"), path (".bai"), emit: alignments
+        tuple val(sample_id), path("*.bam"), path ("*.bai"), emit: alignments
     script:
     """
     minimap2 -ax map-ont $polished $fastq | samtools view -b | samtools sort > ${sample_id}_reads.bam
