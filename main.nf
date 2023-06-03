@@ -242,7 +242,7 @@ process medakaPolishAssembly {
     script:
     """
     STATUS="Failed to polish assembly with Medaka"
-    medaka_consensus -i $fastq -d $draft -m r1041_e82_400bps_sup_v4.2.0_model -o . -t $task.cpus -f
+    medaka_consensus -i $fastq -d $draft -m r1041_e82_400bps_sup_v4.2.0 -o . -t $task.cpus -f
     echo ">${sample_id}" >> ${sample_id}.final.fasta
     sed "2q;d" consensus.fasta >> ${sample_id}.final.fasta
     STATUS="Completed successfully"
@@ -553,7 +553,7 @@ workflow {
         "sample_sheet":params.sample_sheet,
         "min_barcode":params.min_barcode,
         "max_barcode":params.max_barcode])
-    //samples.view() //[/vast/scratch/users/gouil.q/plasmids/marek/plasmid_validation/20230303/basecalls/barcode06, [type:test_sample, barcode:barcode06, sample_id:SEQ_NL63_His_Insect]]
+    //samples.view() //[path, [type:test_sample, barcode:barcodeXX, sample_id:SEQ_ID]]
 
 
     host_reference = params.host_reference ?: 'NO_HOST_REF'
