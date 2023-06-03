@@ -242,6 +242,7 @@ process medakaPolishAssembly {
     script:
     """
     STATUS="Failed to polish assembly with Medaka"
+    pip install --upgrade medaka==1.8.0
     medaka_consensus -i $fastq -d $draft -m r1041_e82_400bps_sup_v4.2.0 -o . -t $task.cpus -f
     echo ">${sample_id}" >> ${sample_id}.final.fasta
     sed "2q;d" consensus.fasta >> ${sample_id}.final.fasta
