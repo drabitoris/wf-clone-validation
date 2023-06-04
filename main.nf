@@ -234,7 +234,7 @@ process lookup_medaka_model {
 process medakaPolishAssembly {
     label "wfplasmid"
     //conda "bioconda::medaka=1.8.0"
-    module "micromamba"
+    //module "micromamba"
     cpus params.threads
     input:
         tuple val(sample_id), path(draft), path(fastq)
@@ -244,6 +244,7 @@ process medakaPolishAssembly {
     script:
     """
     STATUS="Failed to polish assembly with Medaka"
+    module load micromamba
     micromamba activate medaka
     medaka_consensus -i $fastq -d $draft -m r1041_e82_400bps_sup_v4.2.0 -o . -t $task.cpus -f
     echo ">${sample_id}" >> ${sample_id}.final.fasta
