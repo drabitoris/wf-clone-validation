@@ -232,9 +232,7 @@ process lookup_medaka_model {
 }
 
 process medakaPolishAssembly {
-    label "wfplasmid"
-    //conda "bioconda::medaka=1.8.0"
-    //module "micromamba"
+    label "medaka"
     cpus params.threads
     input:
         tuple val(sample_id), path(draft), path(fastq)
@@ -244,12 +242,19 @@ process medakaPolishAssembly {
     script:
     """
     STATUS="Failed to polish assembly with Medaka"
-    module load micromamba
-    micromamba activate medaka
     medaka_consensus -i $fastq -d $draft -m r1041_e82_400bps_sup_v4.2.0 -o . -t $task.cpus -f
     echo ">${sample_id}" >> ${sample_id}.final.fasta
     sed "2q;d" consensus.fasta >> ${sample_id}.final.fasta
     STATUS="Completed successfully"
+    """
+}
+
+process medakaVersion {
+    label "medaka"
+    output:
+        path "medaka_version.txt"
+    """
+    medaka --version | sed 's/ /,/' >> "medaka_version.txt"
     """
 }
 
@@ -307,11 +312,13 @@ process findPrimers {
 process getVersions {
     label "wfplasmid"
     cpus 1
+    input:
+        path "input_versions.txt"
     output:
         path "versions.txt"
     script:
     """
-    medaka --version | sed 's/ /,/' >> versions.txt
+    cat "input_versions.txt" >> "versions.txt"
     minimap2 --version | sed 's/^/minimap2,/' >> versions.txt
     samtools --version | head -n 1 | sed 's/ /,/' >> versions.txt
     seqkit version | sed 's/ /,/' >> versions.txt
@@ -490,7 +497,8 @@ workflow pipeline {
         downsampled_stats = downsampledStats(assemblies.downsampled)
 
         primer_beds = findPrimers(primers, polished.polished)
-        software_versions = getVersions()
+        medaka_version = medakaVersion()
+        software_versions = getVersions(medaka_version)
         workflow_params = getParams()
 
         annotation = runPlannotate(
