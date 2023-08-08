@@ -169,7 +169,7 @@ process assembleCore {
             \$ASSEMBLY \
             -o \${ASSEMBLY_NAME}.trimmed.fasta
     done
-    ls *.deconcat.fasta 1> /dev/null 2>&1) \
+    ls *.trimmed.fasta 1> /dev/null 2>&1) \
     && STATUS="Failed to reconcile assemblies" &&
 
     ############################################################
