@@ -168,9 +168,6 @@ process assembleCore {
         workflow-glue trim \
             \$ASSEMBLY \
             -o \${ASSEMBLY_NAME}.trimmed.fasta
-        workflow-glue deconcatenate \
-            \${ASSEMBLY_NAME}.trimmed.fasta \
-            -o \${ASSEMBLY_NAME}.deconcat.fasta
     done
     ls *.deconcat.fasta 1> /dev/null 2>&1) \
     && STATUS="Failed to reconcile assemblies" &&
@@ -180,7 +177,7 @@ process assembleCore {
     ############################################################
 
     (trycycler cluster \
-        --assemblies *.deconcat.fasta \
+        --assemblies *.trimmed.fasta \
         --reads ${name}.downsampled.fastq \
         --out_dir trycycler) &&
     (trycycler reconcile \
