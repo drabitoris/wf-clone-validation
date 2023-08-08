@@ -11,28 +11,29 @@ process combineFastq {
     label "wfplasmid"
     cpus 1
     input:
-        tuple val(meta), path(directory), val(approx_size)
+        tuple val(meta), path(directory) //store approx_size in meta
     output:
-        tuple val(meta.sample_id), path("${meta.sample_id}.fastq.gz"), val(approx_size), optional: true, emit: sample
+        tuple val(meta.sample_id), path("${meta.sample_id}.fastq.gz"), val(meta.approx_size), optional: true, emit: sample
         path "${meta.sample_id}.stats", optional: true, emit: stats
         tuple val(meta.sample_id), env(STATUS), emit: status
     script:
-        def expected_depth = "$params.assm_coverage"
+        def expected_depth = "$params.assm_coverage" //want 60X cov
         // a little heuristic to decide if we have enough data
-        int value = (expected_depth.toInteger()) * 0.8
-        def expected_length_max = approx_size.toInteger()
-        def expected_length_min = approx_size.toInteger()
-        int max = (expected_length_max.toInteger()) * 1.5
-        int min = (expected_length_min.toInteger()) * 0.5
+        int value = (expected_depth.toInteger()) * 0.8 //48
+        def expected_length_max = meta.approx_size.toInteger() //3kb for Jaison
+        def expected_length_min = meta.approx_size.toInteger() //3kb for Jaison
+        int max = (expected_length_max.toInteger()) * 1.5 // 4.5kb for Jaison
+        int min = (expected_length_min.toInteger()) * 0.5 // 1.5kb for Jaison
     """
     STATUS="Failed due to insufficient reads"
     fastcat -s ${meta.sample_id} -r ${meta.sample_id}.stats -x ${directory} > /dev/null
     fastcat -a "$min" -b "$max" -s ${meta.sample_id} -r ${meta.sample_id}.interim -x ${directory} > ${meta.sample_id}.fastq
-    if [[ "\$(wc -l <"${meta.sample_id}.interim")" -ge "$value" ]];  then
+    #if [[ "\$(wc -l <"${meta.sample_id}.interim")" -ge "$value" ]];  then #if more lines in the interim summary than required 48, then gzip and complete successfully.
         gzip ${meta.sample_id}.fastq
         STATUS="Completed successfully"
-    fi
+    #fi
     """
+    
 }
 
 
@@ -80,7 +81,7 @@ process assembleCore {
     input:
         tuple val(sample_id), path(fastq), val(approx_size)
     output:
-        tuple val(sample_id), path("*.reconciled.fasta"), optional: true, emit: assembly
+        tuple val(sample_id), path("*.reconciled.fasta"), path("*.downsampled.fastq"), optional: true, emit: assembly
         tuple val(sample_id), path("*.downsampled.fastq"), optional: true, emit: downsampled
         tuple val(sample_id), env(STATUS), emit: status
     script:
@@ -167,9 +168,6 @@ process assembleCore {
         workflow-glue trim \
             \$ASSEMBLY \
             -o \${ASSEMBLY_NAME}.trimmed.fasta
-        workflow-glue deconcatenate \
-            \${ASSEMBLY_NAME}.trimmed.fasta \
-            -o \${ASSEMBLY_NAME}.deconcat.fasta
     done
     ls *.deconcat.fasta 1> /dev/null 2>&1) \
     && STATUS="Failed to reconcile assemblies" &&
@@ -179,7 +177,7 @@ process assembleCore {
     ############################################################
 
     (trycycler cluster \
-        --assemblies *.deconcat.fasta \
+        --assemblies *.trimmed.fasta \
         --reads ${name}.downsampled.fastq \
         --out_dir trycycler) &&
     (trycycler reconcile \
@@ -234,18 +232,42 @@ process medakaPolishAssembly {
     label "medaka"
     cpus params.threads
     input:
-        tuple val(sample_id), path(draft), path(fastq), val(medaka_model)
+        tuple val(sample_id), path(draft), path(fastq)
     output:
         tuple val(sample_id), path("*.final.fasta"), emit: polished
         tuple val(sample_id), env(STATUS), emit: status
     script:
-        def model = medaka_model
     """
     STATUS="Failed to polish assembly with Medaka"
-    medaka_consensus -i "${fastq}" -d "${draft}" -m "${model}" -o . -t $task.cpus -f
-    echo ">${sample_id}" >> "${sample_id}.final.fasta"
-    sed "2q;d" consensus.fasta >> "${sample_id}.final.fasta"
+    medaka_consensus -i $fastq -d $draft -m r1041_e82_400bps_sup_v4.2.0 -o . -t $task.cpus -f
+    echo ">${sample_id}" >> ${sample_id}.final.fasta
+    sed "2q;d" consensus.fasta >> ${sample_id}.final.fasta
     STATUS="Completed successfully"
+    """
+}
+
+process medakaVersion {
+    label "medaka"
+    output:
+        path "medaka_version.txt"
+    """
+    medaka --version | sed 's/ /,/' >> "medaka_version.txt"
+    """
+}
+
+process map2assembly {
+    label "wfplasmid"
+    cpus params.threads
+    input:
+        tuple val(sample_id), path(polished), path(fastq), val(approx_size)
+    output:
+        path("*.bam"), emit: bam
+        path("*.bai"), emit: bai
+        path(fastq), emit: fastq
+    script:
+    """
+    minimap2 -ax map-ont $polished $fastq | samtools view -b | samtools sort > ${sample_id}_reads.bam
+    samtools index ${sample_id}_reads.bam
     """
 }
 
@@ -282,15 +304,6 @@ process findPrimers {
         mv !{sample_id}.interim !{sample_id}.bed
     fi
     '''
-}
-
-process medakaVersion {
-    label "medaka"
-    output:
-        path "medaka_version.txt"
-    """
-    medaka --version | sed 's/ /,/' >> "medaka_version.txt"
-    """
 }
 
 process getVersions {
@@ -361,9 +374,9 @@ process inserts {
     label "wfplasmid"
     cpus 1
     input:
-         path "primer_beds/*"
-         path "assemblies/*"
-         path align_ref
+        path "primer_beds/*"
+        path "assemblies/*"
+        path align_ref
     output:
         path "inserts/*", optional: true, emit: inserts
         path "*.json", emit: json
@@ -428,15 +441,16 @@ workflow pipeline {
     main:
         // Combine fastq from each of the sample directories into
         // a single per-sample fastq file
-        named_samples = samples.map { it -> return tuple(it[1],it[0])}
-        if(params.approx_size_sheet != null) {
-            approx_size = Channel.fromPath(params.approx_size_sheet) \
-            | splitCsv(header:true) \
-            | map { row-> tuple(row.sample_id, row.approx_size) }
-            final_samples = named_samples.join(approx_size)}
-        else {
-            final_samples = samples.map  { it -> return tuple(it[1],it[0], params.approx_size)}
-        }
+        final_samples = samples.map { it -> return tuple(it[1],it[0])} // metadata(sample_id,...), fastqdir
+        //if(params.approx_size_sheet != null) { //always use approx_size, from the sample_sheet
+        //    approx_size = Channel.fromPath(params.approx_size_sheet) \
+        //    | splitCsv(header:true) \
+        //    | map { row-> tuple(row.sample_id, row.approx_size) }
+        //    final_samples = named_samples.join(approx_size)}
+        //else {
+        //    final_samples = samples.map  { it -> return tuple(it[1],it[0], params.approx_size)}
+        //}
+        //final_samples.view() // check the approx sizes are right
         sample_fastqs = combineFastq(final_samples)
         // Optionally filter the data, removing reads mapping to
         // the host or background genome
@@ -446,33 +460,31 @@ workflow pipeline {
             samples_filtered = filtered.unmapped
             updated_status = filtered.status
             filtered_stats = filtered.host_filter_stats.collect()
-                             .ifEmpty(file("$projectDir/data/OPTIONAL_FILE"))
+                .ifEmpty(file("$projectDir/data/OPTIONAL_FILE"))
         }
         else {
             samples_filtered = sample_fastqs.sample
             updated_status = sample_fastqs.status
             filtered_stats = file("$projectDir/data/OPTIONAL_FILE")
         }
-       
+
         // Core assembly and reconciliation
         assemblies = assembleCore(samples_filtered)
-        
+
         named_drafts = assemblies.assembly.groupTuple()
+
         named_samples = assemblies.downsampled.groupTuple()
+
         named_drafts_samples = named_drafts.join(named_samples)
 
-        if(params.medaka_model) {
-            log.warn "Overriding Medaka model with ${params.medaka_model}."
-            medaka_model = Channel.fromList([params.medaka_model])
-        }
-        else {
-            // map basecalling model to medaka model
-            lookup_table = Channel.fromPath("${projectDir}/data/medaka_models.tsv", checkIfExists: true)
-            medaka_model = lookup_medaka_model(lookup_table, params.basecaller_cfg)
-        }
         // Polish draft assembly
-        polished = medakaPolishAssembly(named_drafts_samples.combine(medaka_model))
-       
+        polished = medakaPolishAssembly(assemblies.assembly)
+
+        // Map initial reads to final assembly
+        //first make input channel with assembly and fastq
+        mapinput=polished.polished.combine(samples_filtered, by:0)
+        mapping = map2assembly(mapinput)
+
         // Concat statuses and keep the last of each
         final_status = sample_fastqs.status.concat(updated_status)
         .concat(assemblies.status).concat(polished.status).groupTuple()
@@ -511,7 +523,9 @@ workflow pipeline {
             insert.inserts,
             annotation.json,
             annotation.annotations,
-            workflow_params)
+            workflow_params,
+            mapping.bam,
+            mapping.bai)
     emit:
         results
         telemetry = workflow_params
@@ -548,6 +562,9 @@ workflow {
         "sample_sheet":params.sample_sheet,
         "min_barcode":params.min_barcode,
         "max_barcode":params.max_barcode])
+    //samples.view() //[path, [type:test_sample, barcode:barcodeXX, sample_id:SEQ_ID]]
+
+
     host_reference = params.host_reference ?: 'NO_HOST_REF'
     host_reference = file(host_reference, checkIfExists: host_reference == 'NO_HOST_REF' ? false : true)
     regions_bedfile = params.regions_bedfile ?: 'NO_REG_BED'
@@ -562,7 +579,7 @@ workflow {
     }
     database = file("$projectDir/data/OPTIONAL_FILE")
     if (params.db_directory != null){
-         database = file(params.db_directory, type: "dir")
+        database = file(params.db_directory, type: "dir")
 
     }
 
@@ -570,7 +587,6 @@ workflow {
     results = pipeline(samples, host_reference, regions_bedfile, database, primer_file, align_ref)
 
     output(results[0])
-   
 }
 
 
